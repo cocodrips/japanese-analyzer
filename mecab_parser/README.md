@@ -1,0 +1,2 @@
+# macab_parser 
+mecabでparseした文字列を扱いやすいオブジェクト(Morpheme)に変換します
