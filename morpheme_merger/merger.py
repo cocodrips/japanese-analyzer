@@ -16,13 +16,14 @@ class MorphemeMerger:
     def __init__(self):
         self.rule = None
 
-    def get_rule_pattern(self, text, norm=NormType.NORM, skip=True):
+    def get_rule_pattern(self, text, norm=NormType.NORM,
+                         skip=True, mecab_args=''):
         """
         :param str          text: Target text 
         :param NormType     norm: 
         :return: (word, posses)
         """
-        parser = Parser()
+        parser = Parser(mecab_args=mecab_args)
         morphemes = parser.parse(text)
 
         i = 0
