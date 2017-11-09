@@ -54,22 +54,42 @@ class MorphemeMerger:
         root[rule] = {rule: {rule: {None: None}}}
         return root
 
-    def set_rule_tree(self, rule_file_path, sheet_name):
+    def set_rule_from_csv(self, rule_file_path, sep=','):
+        """Create rule tree from csv file.
+        
+        :param rule_file_path: Rule file path
+        :param str sep: default=','
+        :return: None
         """
-        ルールツリーを作る
+        rules = pd.read_csv(rule_file_path, sep=sep)
+        self._set_rule_tree(rules)
+
+    def set_rule_from_excel(self, rule_file_path, sheet_name):
+        """Create rule tree from excel file.
+        
+        :param str rule_file_path: Rule file path
+        :param str sheet_name: Default is 0 (means read first sheet) 
+        :return: None 
         """
         rules = pd.read_excel(rule_file_path,
                               sheetname=sheet_name)
+        self._set_rule_tree(rules)
 
+    def _set_rule_tree(self, rules):
+        """Create rule tree.
+        
+        :param pandas.DataFrame rules: DataFrame object from rule file.
+        :return: None
+        """
         poss_keys = ['pos0', 'pos1', 'pos2', 'pos3', 'pos4']
 
-        # Set default value    
+        # Set default value
         rules['min'] = pd.to_numeric(rules['min']).fillna(1)
         rules['max'] = pd.to_numeric(rules['max']).fillna(1)
         rules[poss_keys] = rules[poss_keys].astype(str)
         rules['id'] = rules['id'].astype(str)
 
-        # ツリー生成
+        # Create tree
         root = dict()
         prev_branches = [root]
         for i, rule in rules.iterrows():
@@ -112,7 +132,7 @@ class MorphemeMerger:
 
     def _rec_tree_check(self, morphemes, index, norm=NormType.NORM):
         """
-        :param [Token]  tokens 
+        :param [Morpheme]  tokens 
         :param int      index: tokensの 
         :param NormType norm 
         
