@@ -1,5 +1,6 @@
 import enum
 import pandas as pd
+import copy
 import MeCab
 
 from mecab_parser import Parser
@@ -10,6 +11,13 @@ class NormType(enum.Enum):
     RAW = 0
     NORM = 1
     BASE = 2
+
+
+class Path:
+    def __init__(self, word, base, rule):
+        self.word = word
+        self.base = base
+        self.rule = rule
 
 
 class MorphemeMerger:
@@ -32,17 +40,15 @@ class MorphemeMerger:
         posses = []
         n = len(morphemes)
         while i < n:
-            phases, rules, _i = self._rec_tree_check(morphemes, i, norm=norm)
-            if phases is not None:
+            paths, _i = self._rec_tree_check(morphemes, i, norm=norm)
+            if paths is not None:
                 if skip:
                     i = _i
                 else:
                     i += 1
 
-                words.append(''.join(phases))
-                posses.append('->'.join(
-                    ["{}({})".format(rule.poss[0], rule.poss[1])
-                     for rule in rules]))
+                words.append(''.join([path.word for path in paths]))
+                posses.append([path.rule.poss for path in paths])
             else:
                 i += 1
 
@@ -132,7 +138,7 @@ class MorphemeMerger:
 
     def _rec_tree_check(self, morphemes, index, norm=NormType.NORM):
         """
-        :param [Morpheme]  tokens 
+        :param [Token]  tokens 
         :param int      index: tokensの 
         :param NormType norm 
         
@@ -140,41 +146,51 @@ class MorphemeMerger:
                   フェーズに適用されたRuleのリスト, 
                   どこのindexまで進んだか)
         """
-        path_word = []
-        path_base = []
-        path_rule = []
-        i = index
-        is_leaf_node = False
-        current_branch = self.rule
-        while not is_leaf_node:
-            if i >= len(morphemes):
-                if None in current_branch:
-                    is_leaf_node = True
-                    continue
-                return None, None, None
+        paths, i = self._rec_check(self.rule, morphemes[index:], index, [])
 
-            for rule, branch in current_branch.items():
-                if rule is None:
-                    is_leaf_node = True
-                    break
-                if rule.is_match(morphemes[i]):
-                    current_branch = branch
-                    path_word.append(morphemes[i].word)
-                    path_base.append(morphemes[i].base)
-                    path_rule.append(rule)
-                    if rule.poss is None:
-                        is_leaf_node = True
-                    i += 1
-                    break
-            else:
-                return None, None, None
+        if paths is not None:
+            if norm == NormType.NORM:
+                if paths[-1].base != '*':
+                    paths[-1].word = paths[-1].base
+            if norm == NormType.BASE:
+                for path in paths:
+                    if path.base != '*':
+                        path.word = path.base
 
-        if norm == NormType.NORM:
-            if path_base[-1] != '*':
-                path_word[-1] = path_base[-1]
-        if norm == NormType.BASE:
-            for i in range(len(path_word)):
-                if path_base[i] != '*':
-                    path_word[i] = path_base[i]
+        return (paths, i)
 
-        return (path_word, path_rule, i)
+    def _rec_check(self, rules, morphemes, i, paths):
+        '''
+        :param rules: 
+        :param morphemes: 
+        :param paths: 
+        :rtype: [Path]
+        '''
+        '''最後の文字の場合'''
+        if not morphemes:
+            # Match rule
+            if None in rules:
+                return paths, i
+
+            # No match
+            return None, None
+
+        '''最後の文字ではない場合'''
+        for rule, branch in rules.items():
+            if rule is None:
+                return paths, i
+
+            if rule.is_match(morphemes[0]):
+                path = Path(morphemes[0].word, morphemes[0].base, rule)
+                _paths = copy.deepcopy(paths)
+                _paths.append(path)
+
+                if rule.poss is None:
+                    return _paths
+                result, _i = self._rec_check(branch, morphemes[1:],
+                                             i + 1, _paths)
+                if result is not None:
+                    return result, _i
+
+        '''最後までマッチ失敗'''
+        return None, None
