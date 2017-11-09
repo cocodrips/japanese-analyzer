@@ -15,7 +15,7 @@ class NormType(enum.Enum):
 class MorphemeMerger:
     def __init__(self, mecab_args=''):
         self.rule = None
-        self.mecab_args = ''
+        self.mecab_args = mecab_args
 
     def get_rule_pattern(self, text, norm=NormType.NORM,
                          skip=True):
