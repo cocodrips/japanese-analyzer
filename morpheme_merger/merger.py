@@ -13,17 +13,18 @@ class NormType(enum.Enum):
 
 
 class MorphemeMerger:
-    def __init__(self):
+    def __init__(self, mecab_args=''):
         self.rule = None
+        self.mecab_args = ''
 
     def get_rule_pattern(self, text, norm=NormType.NORM,
-                         skip=True, mecab_args=''):
+                         skip=True):
         """
         :param str          text: Target text 
         :param NormType     norm: 
         :return: (word, posses)
         """
-        parser = Parser(mecab_args=mecab_args)
+        parser = Parser(mecab_args=self.mecab_args)
         morphemes = parser.parse(text)
 
         i = 0
@@ -31,7 +32,7 @@ class MorphemeMerger:
         posses = []
         n = len(morphemes)
         while i < n:
-            phases, rules, _i = self._rec_tree_check(morphemes, i)
+            phases, rules, _i = self._rec_tree_check(morphemes, i, norm=norm)
             if phases is not None:
                 if skip:
                     i = _i
