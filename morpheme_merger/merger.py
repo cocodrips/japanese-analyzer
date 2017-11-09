@@ -1,5 +1,6 @@
 import enum
 import pandas as pd
+import copy
 import MeCab
 
 from mecab_parser import Parser
@@ -10,6 +11,13 @@ class NormType(enum.Enum):
     RAW = 0
     NORM = 1
     BASE = 2
+
+
+class Path:
+    def __init__(self, word, base, rule):
+        self.word = word
+        self.base = base
+        self.rule = rule
 
 
 class MorphemeMerger:
@@ -32,17 +40,15 @@ class MorphemeMerger:
         posses = []
         n = len(morphemes)
         while i < n:
-            phases, rules, _i = self._rec_tree_check(morphemes, i, norm=norm)
-            if phases is not None:
+            paths, _i = self._rec_tree_check(morphemes, i, norm=norm)
+            if paths is not None:
                 if skip:
                     i = _i
                 else:
                     i += 1
 
-                words.append(''.join(phases))
-                posses.append('->'.join(
-                    ["{}({})".format(rule.poss[0], rule.poss[1])
-                     for rule in rules]))
+                words.append(''.join([path.word for path in paths]))
+                posses.append([path.rule.poss for path in paths])
             else:
                 i += 1
 
@@ -54,22 +60,42 @@ class MorphemeMerger:
         root[rule] = {rule: {rule: {None: None}}}
         return root
 
-    def set_rule_tree(self, rule_file_path, sheet_name):
+    def set_rule_from_csv(self, rule_file_path, sep=','):
+        """Create rule tree from csv file.
+        
+        :param rule_file_path: Rule file path
+        :param str sep: default=','
+        :return: None
         """
-        ルールツリーを作る
+        rules = pd.read_csv(rule_file_path, sep=sep)
+        self._set_rule_tree(rules)
+
+    def set_rule_from_excel(self, rule_file_path, sheet_name):
+        """Create rule tree from excel file.
+        
+        :param str rule_file_path: Rule file path
+        :param str sheet_name: Default is 0 (means read first sheet) 
+        :return: None 
         """
         rules = pd.read_excel(rule_file_path,
                               sheetname=sheet_name)
+        self._set_rule_tree(rules)
 
+    def _set_rule_tree(self, rules):
+        """Create rule tree.
+        
+        :param pandas.DataFrame rules: DataFrame object from rule file.
+        :return: None
+        """
         poss_keys = ['pos0', 'pos1', 'pos2', 'pos3', 'pos4']
 
-        # Set default value    
+        # Set default value
         rules['min'] = pd.to_numeric(rules['min']).fillna(1)
         rules['max'] = pd.to_numeric(rules['max']).fillna(1)
         rules[poss_keys] = rules[poss_keys].astype(str)
         rules['id'] = rules['id'].astype(str)
 
-        # ツリー生成
+        # Create tree
         root = dict()
         prev_branches = [root]
         for i, rule in rules.iterrows():
@@ -120,41 +146,51 @@ class MorphemeMerger:
                   フェーズに適用されたRuleのリスト, 
                   どこのindexまで進んだか)
         """
-        path_word = []
-        path_base = []
-        path_rule = []
-        i = index
-        is_leaf_node = False
-        current_branch = self.rule
-        while not is_leaf_node:
-            if i >= len(morphemes):
-                if None in current_branch:
-                    is_leaf_node = True
-                    continue
-                return None, None, None
+        paths, i = self._rec_check(self.rule, morphemes[index:], index, [])
 
-            for rule, branch in current_branch.items():
-                if rule is None:
-                    is_leaf_node = True
-                    break
-                if rule.is_match(morphemes[i]):
-                    current_branch = branch
-                    path_word.append(morphemes[i].word)
-                    path_base.append(morphemes[i].base)
-                    path_rule.append(rule)
-                    if rule.poss is None:
-                        is_leaf_node = True
-                    i += 1
-                    break
-            else:
-                return None, None, None
+        if paths is not None:
+            if norm == NormType.NORM:
+                if paths[-1].base != '*':
+                    paths[-1].word = paths[-1].base
+            if norm == NormType.BASE:
+                for path in paths:
+                    if path.base != '*':
+                        path.word = path.base
 
-        if norm == NormType.NORM:
-            if path_base[-1] != '*':
-                path_word[-1] = path_base[-1]
-        if norm == NormType.BASE:
-            for i in range(len(path_word)):
-                if path_base[i] != '*':
-                    path_word[i] = path_base[i]
+        return (paths, i)
 
-        return (path_word, path_rule, i)
+    def _rec_check(self, rules, morphemes, i, paths):
+        '''
+        :param rules: 
+        :param morphemes: 
+        :param paths: 
+        :rtype: [Path]
+        '''
+        '''最後の文字の場合'''
+        if not morphemes:
+            # Match rule
+            if None in rules:
+                return paths, i
+
+            # No match
+            return None, None
+
+        '''最後の文字ではない場合'''
+        for rule, branch in rules.items():
+            if rule is None:
+                return paths, i
+
+            if rule.is_match(morphemes[0]):
+                path = Path(morphemes[0].word, morphemes[0].base, rule)
+                _paths = copy.deepcopy(paths)
+                _paths.append(path)
+
+                if rule.poss is None:
+                    return _paths
+                result, _i = self._rec_check(branch, morphemes[1:],
+                                             i + 1, _paths)
+                if result is not None:
+                    return result, _i
+
+        '''最後までマッチ失敗'''
+        return None, None
