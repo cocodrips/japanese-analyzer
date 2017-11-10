@@ -98,8 +98,14 @@ class MorphemeMerger:
         # Create tree
         root = dict()
         prev_branches = [root]
+
+        prev_id = None
+        _id = None
         for i, rule in rules.iterrows():
             word = rule['id']
+            if word != 'nan':
+                prev_id = _id
+                _id = word
             repeat_min = int(rule['min'])
             repeat_max = int(rule['max'])
             poss = rule[poss_keys]
@@ -112,7 +118,7 @@ class MorphemeMerger:
                 for prev_branch in prev_branches:
                     # 木の構成が終了するならNoneを入れておく
                     if prev_branch is not root:
-                        prev_branch[None] = None
+                        prev_branch[None] = prev_id
                 prev_branches = [root]
 
             for prev_branch in prev_branches:
@@ -133,7 +139,7 @@ class MorphemeMerger:
         # 最後の行だった場合、最後にNoneをkeyにいれておく
         for prev_branch in prev_branches:
             if prev_branch is not root:
-                prev_branch[None] = None
+                prev_branch[None] = _id
         self.rule = root
 
     def _rec_tree_check(self, morphemes, index, norm=NormType.NORM):
@@ -146,7 +152,7 @@ class MorphemeMerger:
                   フェーズに適用されたRuleのリスト, 
                   どこのindexまで進んだか)
         """
-        paths, i = self._rec_check(self.rule, morphemes[index:], index, [])
+        paths, i, _ = self._rec_check(self.rule, morphemes[index:], index, [])
 
         if paths is not None:
             if norm == NormType.NORM:
@@ -164,33 +170,46 @@ class MorphemeMerger:
         :param rules: 
         :param morphemes: 
         :param paths: 
-        :rtype: [Path]
+        :rtype: [Path], index, priority
         '''
         '''最後の文字の場合'''
         if not morphemes:
             # Match rule
             if None in rules:
-                return paths, i
+                return paths, i, rules[None]
 
             # No match
-            return None, None
+            return None, None, None
 
         '''最後の文字ではない場合'''
+        best_result = None
+        best_score = None
+        best_i = 0
         for rule, branch in rules.items():
             if rule is None:
-                return paths, i
+                if best_result is None or branch < best_score:
+                    best_score = branch
+                    best_result = paths
+                    best_i = i
+                continue
 
             if rule.is_match(morphemes[0]):
                 path = Path(morphemes[0].word, morphemes[0].base, rule)
                 _paths = copy.deepcopy(paths)
                 _paths.append(path)
 
-                if rule.poss is None:
-                    return _paths
-                result, _i = self._rec_check(branch, morphemes[1:],
-                                             i + 1, _paths)
+                # if rule.poss is None:
+                #     return _paths
+                result, _i, priority = self._rec_check(branch, morphemes[1:],
+                                                       i + 1, _paths)
                 if result is not None:
-                    return result, _i
+                    if best_result is None or priority < best_score:
+                        best_score = priority
+                        best_result = result
+                        best_i = _i
+
+        if best_result is not None:
+            return best_result, best_i, best_score
 
         '''最後までマッチ失敗'''
-        return None, None
+        return None, None, None
