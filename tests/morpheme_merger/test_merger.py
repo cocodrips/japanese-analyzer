@@ -20,7 +20,7 @@ def test_set_rule_tree_from_excel():
     mm = MorphemeMerger()
     mm.set_rule_from_excel(filepath, 'test')
     print(mm.rule.keys())
-    assert len(mm.rule.keys()) == 3
+    assert len(mm.rule.keys()) == 4
 
 
 def test_set_rule_tree_from_csv():
@@ -44,6 +44,8 @@ def test_get_rule_pattern():
 @pytest.mark.parametrize("src, dest", [
     ('唖然と', ['唖然と']),
     ('申し訳ないです', ['申し訳ない']),
+    ('見る影もない', ['見る影もない']),
+    ('扱うことはできる', ['扱うことはできる']),
 ])
 def test_duplicate_rule_pattern(src, dest):
     mm = morpheme_merger()
