@@ -1,1 +1,1 @@
-from mecab_parser.parser import Parser
+from mecab_parser.parser import Parser, Morpheme
