@@ -1,9 +1,8 @@
+# -*- coding: utf-8 -*-
 import CaboCha
 from mecab_parser import Morpheme
 
 
-# def DependenctUnit:
-#     def __init
 
 class DependencyParser:
     def __init__(self):
