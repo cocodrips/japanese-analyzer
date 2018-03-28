@@ -134,7 +134,8 @@ class MorphemeMerger:
                         # 現在のブランチにnodeがなければ追加
                         branch[r] = dict()
                     branch = branch[r]
-                    current_branches.append(branch)
+                    if i >= repeat_min:
+                        current_branches.append(branch)
             prev_branches = current_branches
 
         # 最後の行だった場合、最後にNoneをkeyにいれておく

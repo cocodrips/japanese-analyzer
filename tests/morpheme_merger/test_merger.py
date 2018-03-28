@@ -20,7 +20,7 @@ def test_set_rule_tree_from_excel():
     mm = MorphemeMerger()
     mm.set_rule_from_excel(filepath, 'test')
     print(mm.rule.keys())
-    assert len(mm.rule.keys()) == 4
+    assert len(mm.rule.keys()) == 5
 
 
 def test_set_rule_tree_from_csv():
@@ -46,8 +46,10 @@ def test_get_rule_pattern():
     ('申し訳ないです', ['申し訳ない']),
     ('見る影もない', ['見る影もない']),
     ('扱うことはできる', ['扱うことはできる']),
+    ('ご飯とはなんですか', ['ご飯'])
 ])
 def test_duplicate_rule_pattern(src, dest):
     mm = morpheme_merger()
     target, posses = mm.get_rule_pattern(src)
+    print(target, posses)
     assert target == dest
