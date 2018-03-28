@@ -79,7 +79,7 @@ class MorphemeMerger:
         :return: None 
         """
         rules = pd.read_excel(rule_file_path,
-                              sheetname=sheet_name)
+                              sheet_name=sheet_name)
         self._set_rule_tree(rules)
 
     def _set_rule_tree(self, rules):
