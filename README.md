@@ -18,3 +18,14 @@ python setup.py install
 pytest
 ```
 
+## 使い方 
+```python
+
+from morpheme_merger import MorphemeMerger
+mm = MorphemeMerger()
+mm.set_rule_from_excel('rule path')
+
+words, posses = mm.get_rule_pattern('XXXX')
+print (words)
+```
+

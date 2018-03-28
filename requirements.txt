@@ -1,0 +1,3 @@
+pandas
+mecab-python3
+xlrd
